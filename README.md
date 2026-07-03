@@ -2,6 +2,8 @@
 
 App Nuxt 4 pour tracker ses candidatures et ne pas oublier de relancer les recruteurs.
 
+**Prod : [jobs.francklebas.com](https://jobs.francklebas.com)** (Cloudflare Workers)
+
 - **Auth** : comptes utilisateurs via Supabase Auth (e-mail / mot de passe)
 - **DB** : table `applications` sur Supabase, protégée par Row Level Security
 - **Relances** : chaque candidature peut avoir une date de relance ; les relances dues s'affichent en haut du dashboard
@@ -14,8 +16,12 @@ App Nuxt 4 pour tracker ses candidatures et ne pas oublier de relancer les recru
 3. Copier `.env.example` vers `.env` et renseigner :
    - `SUPABASE_URL` : Project Settings → API → Project URL
    - `SUPABASE_KEY` : la clé `anon` / publishable
-4. Dans **Authentication → URL Configuration**, mettre la Site URL à `http://localhost:3000`
-   (les liens de confirmation d'e-mail redirigent vers `/confirm`)
+4. Dans **Authentication → URL Configuration** :
+   - **Site URL** : `https://jobs.francklebas.com` — c'est là que Supabase redirige après un clic
+     sur un lien d'e-mail (confirmation d'inscription, reset de mot de passe). L'app récupère
+     alors la session sur la page `/confirm` avant de renvoyer vers le dashboard.
+   - **Redirect URLs** : ajouter `http://localhost:3000/**` pour que ces liens fonctionnent
+     aussi en dev local.
 
 ## Développement
 
@@ -26,12 +32,15 @@ bun run dev
 
 L'app tourne sur `http://localhost:3000`. Sans session, toute page redirige vers `/login`.
 
-## Production
+## Déploiement (Cloudflare Workers)
 
 ```bash
 bun run build
-bun run preview
+bunx wrangler deploy
 ```
+
+Le build utilise le preset Nitro `cloudflare_module` ; la config (custom domain
+`jobs.francklebas.com`, variables d'environnement Supabase) est dans `wrangler.jsonc`.
 
 ## Pistes suivantes
 
