@@ -11,7 +11,7 @@ import {
   APPLICATION_TYPE_LABELS,
 } from "#shared/types/application";
 
-defineProps<{ applications: Application[] }>();
+const props = defineProps<{ applications: Application[] }>();
 
 const emit = defineEmits<{
   "update-status": [id: string, status: ApplicationStatus];
@@ -24,25 +24,147 @@ function formatDate(value: string | null) {
   if (!value) return "—";
   return new Date(value).toLocaleDateString("fr-FR");
 }
+
+/** Minuscules sans accents, pour une recherche insensible à la casse et aux diacritiques. */
+function normalize(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+}
+
+const search = ref("");
+
+function haystack(app: Application) {
+  return normalize(
+    [
+      app.company,
+      app.position,
+      APPLICATION_STATUS_LABELS[app.status],
+      APPLICATION_TYPE_LABELS[app.type ?? "emploi"],
+      app.contact_name,
+      app.contact_email,
+      app.notes,
+    ]
+      .filter(Boolean)
+      .join(" "),
+  );
+}
+
+/** Chaque terme (séparé par des espaces) doit apparaître quelque part dans la ligne. */
+const filtered = computed(() => {
+  const terms = normalize(search.value).split(/\s+/).filter(Boolean);
+  if (!terms.length) return props.applications;
+  return props.applications.filter((app) => {
+    const h = haystack(app);
+    return terms.every((term) => h.includes(term));
+  });
+});
+
+type SortKey =
+  | "company"
+  | "position"
+  | "type"
+  | "applied_at"
+  | "status"
+  | "follow_up_at";
+
+const COLUMNS: { key: SortKey; label: string }[] = [
+  { key: "company", label: "Entreprise" },
+  { key: "position", label: "Poste" },
+  { key: "type", label: "Type" },
+  { key: "applied_at", label: "Envoyée le" },
+  { key: "status", label: "Statut" },
+  { key: "follow_up_at", label: "Relance" },
+];
+
+const sortKey = ref<SortKey | null>(null);
+const sortDir = ref<"asc" | "desc">("asc");
+
+function toggleSort(key: SortKey) {
+  if (sortKey.value === key) {
+    sortDir.value = sortDir.value === "asc" ? "desc" : "asc";
+  } else {
+    sortKey.value = key;
+    sortDir.value = "asc";
+  }
+}
+
+function sortValue(app: Application, key: SortKey): string | number | null {
+  switch (key) {
+    case "status":
+      // ordre du pipeline (envoyée → … → sans réponse) plutôt qu'alphabétique
+      return APPLICATION_STATUSES.indexOf(app.status);
+    case "type":
+      return APPLICATION_TYPE_LABELS[app.type ?? "emploi"];
+    case "company":
+    case "position":
+      return normalize(app[key]);
+    default:
+      // dates ISO : l'ordre lexicographique est l'ordre chronologique
+      return app[key];
+  }
+}
+
+const displayed = computed(() => {
+  const key = sortKey.value;
+  if (!key) return filtered.value;
+  const dir = sortDir.value === "asc" ? 1 : -1;
+  return [...filtered.value].sort((a, b) => {
+    const va = sortValue(a, key);
+    const vb = sortValue(b, key);
+    // valeurs absentes toujours en bas, quel que soit le sens
+    if (va === null) return vb === null ? 0 : 1;
+    if (vb === null) return -1;
+    return (va < vb ? -1 : va > vb ? 1 : 0) * dir;
+  });
+});
 </script>
 
 <template>
-  <div class="overflow-x-auto rounded-2xl bg-white shadow-sm dark:bg-zinc-900">
+  <div>
+    <input
+      v-model="search"
+      type="search"
+      placeholder="Rechercher (entreprise, poste, contact, notes…)"
+      class="mb-3 w-full max-w-sm rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500 dark:border-zinc-700 dark:bg-zinc-900"
+    />
+
+    <div class="overflow-x-auto rounded-2xl bg-white shadow-sm dark:bg-zinc-900">
     <table class="w-full border-collapse text-left text-sm">
       <thead>
         <tr class="bg-zinc-50 text-zinc-500 dark:bg-zinc-800/50 dark:text-zinc-400">
-          <th class="px-4 py-3 font-medium">Entreprise</th>
-          <th class="px-4 py-3 font-medium">Poste</th>
-          <th class="px-4 py-3 font-medium">Type</th>
-          <th class="px-4 py-3 font-medium">Envoyée le</th>
-          <th class="px-4 py-3 font-medium">Statut</th>
-          <th class="px-4 py-3 font-medium">Relance</th>
+          <th
+            v-for="col in COLUMNS"
+            :key="col.key"
+            class="px-4 py-3 font-medium"
+            :aria-sort="sortKey === col.key ? (sortDir === 'asc' ? 'ascending' : 'descending') : undefined"
+          >
+            <button
+              type="button"
+              class="flex items-center gap-1 hover:text-zinc-800 dark:hover:text-zinc-100"
+              @click="toggleSort(col.key)"
+            >
+              {{ col.label }}
+              <span v-if="sortKey === col.key" aria-hidden="true">
+                {{ sortDir === "asc" ? "▲" : "▼" }}
+              </span>
+            </button>
+          </th>
           <th class="px-4 py-3" />
         </tr>
       </thead>
       <tbody>
+        <tr v-if="!displayed.length">
+          <td
+            colspan="7"
+            class="px-4 py-8 text-center text-zinc-500 dark:text-zinc-400"
+          >
+            Aucune candidature ne correspond à « {{ search }} »
+          </td>
+        </tr>
         <tr
-          v-for="app in applications"
+          v-for="app in displayed"
           :key="app.id"
           class="border-t border-zinc-100 dark:border-zinc-800"
         >
@@ -116,5 +238,6 @@ function formatDate(value: string | null) {
         </tr>
       </tbody>
     </table>
+    </div>
   </div>
 </template>
