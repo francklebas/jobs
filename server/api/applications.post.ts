@@ -1,6 +1,9 @@
 import { serverSupabaseClient, serverSupabaseUser } from "#supabase/server";
 import type { Application, ApplicationInput } from "#shared/types/application";
-import { APPLICATION_STATUSES } from "#shared/types/application";
+import {
+  APPLICATION_STATUSES,
+  APPLICATION_TYPES,
+} from "#shared/types/application";
 
 export default defineEventHandler(async (event): Promise<Application> => {
   const user = await serverSupabaseUser(event);
@@ -18,6 +21,9 @@ export default defineEventHandler(async (event): Promise<Application> => {
   if (body.status && !APPLICATION_STATUSES.includes(body.status)) {
     throw createError({ statusCode: 400, statusMessage: "Statut invalide" });
   }
+  if (body.type && !APPLICATION_TYPES.includes(body.type)) {
+    throw createError({ statusCode: 400, statusMessage: "Type invalide" });
+  }
 
   const payload = {
     // serverSupabaseUser renvoie les claims du JWT : l'id utilisateur est `sub`
@@ -25,11 +31,13 @@ export default defineEventHandler(async (event): Promise<Application> => {
     company: body.company.trim(),
     position: body.position.trim(),
     status: body.status ?? "envoyee",
+    type: body.type ?? "emploi",
     applied_at: body.applied_at || undefined,
     follow_up_at: body.follow_up_at || null,
     contact_name: body.contact_name || null,
     contact_email: body.contact_email || null,
     job_url: body.job_url || null,
+    github_project_url: body.github_project_url || null,
     notes: body.notes || null,
   };
 

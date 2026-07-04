@@ -1,5 +1,9 @@
 <script setup lang="ts">
 import type { ApplicationInput } from "#shared/types/application";
+import {
+  APPLICATION_TYPES,
+  APPLICATION_TYPE_LABELS,
+} from "#shared/types/application";
 
 const emit = defineEmits<{ created: [] }>();
 
@@ -11,11 +15,13 @@ function emptyForm(): ApplicationInput {
   return {
     company: "",
     position: "",
+    type: "emploi",
     applied_at: new Date().toISOString().slice(0, 10),
     follow_up_at: null,
     contact_name: "",
     contact_email: "",
     job_url: "",
+    github_project_url: "",
     notes: "",
   };
 }
@@ -54,6 +60,26 @@ async function submit() {
       class="rounded-2xl bg-white p-5 shadow-sm dark:bg-zinc-900"
       @submit.prevent="submit"
     >
+      <fieldset class="mb-4">
+        <legend class="mb-1 text-sm font-medium">Type</legend>
+        <div class="inline-flex rounded-lg border border-zinc-300 p-0.5 dark:border-zinc-700">
+          <button
+            v-for="applicationType in APPLICATION_TYPES"
+            :key="applicationType"
+            type="button"
+            class="rounded-md px-3 py-1 text-sm"
+            :class="
+              form.type === applicationType
+                ? 'bg-blue-600 font-medium text-white'
+                : 'text-zinc-600 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800'
+            "
+            @click="form.type = applicationType"
+          >
+            {{ APPLICATION_TYPE_LABELS[applicationType] }}
+          </button>
+        </div>
+      </fieldset>
+
       <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <label class="form-label">
           Entreprise *
@@ -79,9 +105,18 @@ async function submit() {
           E-mail du contact
           <input v-model="form.contact_email" type="email" class="form-input" />
         </label>
-        <label class="form-label sm:col-span-2">
+        <label class="form-label">
           Lien de l'offre
           <input v-model="form.job_url" type="url" placeholder="https://…" class="form-input" />
+        </label>
+        <label class="form-label">
+          Projet GitHub
+          <input
+            v-model="form.github_project_url"
+            type="url"
+            placeholder="https://github.com/…"
+            class="form-input"
+          />
         </label>
         <label class="form-label sm:col-span-2">
           Notes

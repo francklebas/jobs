@@ -1,5 +1,9 @@
 <script setup lang="ts">
-import type { Application, ApplicationStatus } from "#shared/types/application";
+import type {
+  Application,
+  ApplicationStatus,
+  ApplicationType,
+} from "#shared/types/application";
 import { ACTIVE_STATUSES } from "#shared/types/application";
 
 const supabase = useSupabaseClient();
@@ -31,6 +35,10 @@ async function updateApplication(id: string, patch: Record<string, unknown>) {
 
 function updateStatus(id: string, newStatus: ApplicationStatus) {
   return updateApplication(id, { status: newStatus });
+}
+
+function updateType(id: string, type: ApplicationType) {
+  return updateApplication(id, { type });
 }
 
 function updateFollowUp(id: string, date: string | null) {
@@ -121,6 +129,7 @@ async function logout() {
       v-else-if="applications?.length"
       :applications="applications"
       @update-status="updateStatus"
+      @update-type="updateType"
       @update-follow-up="updateFollowUp"
       @remove="removeApplication"
     />

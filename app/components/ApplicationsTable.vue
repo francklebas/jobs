@@ -1,14 +1,21 @@
 <script setup lang="ts">
-import type { Application, ApplicationStatus } from "#shared/types/application";
+import type {
+  Application,
+  ApplicationStatus,
+  ApplicationType,
+} from "#shared/types/application";
 import {
   APPLICATION_STATUSES,
   APPLICATION_STATUS_LABELS,
+  APPLICATION_TYPES,
+  APPLICATION_TYPE_LABELS,
 } from "#shared/types/application";
 
 defineProps<{ applications: Application[] }>();
 
 const emit = defineEmits<{
   "update-status": [id: string, status: ApplicationStatus];
+  "update-type": [id: string, type: ApplicationType];
   "update-follow-up": [id: string, date: string | null];
   remove: [id: string];
 }>();
@@ -26,6 +33,7 @@ function formatDate(value: string | null) {
         <tr class="bg-zinc-50 text-zinc-500 dark:bg-zinc-800/50 dark:text-zinc-400">
           <th class="px-4 py-3 font-medium">Entreprise</th>
           <th class="px-4 py-3 font-medium">Poste</th>
+          <th class="px-4 py-3 font-medium">Type</th>
           <th class="px-4 py-3 font-medium">Envoyée le</th>
           <th class="px-4 py-3 font-medium">Statut</th>
           <th class="px-4 py-3 font-medium">Relance</th>
@@ -53,7 +61,29 @@ function formatDate(value: string | null) {
               {{ app.contact_name }}
             </small>
           </td>
-          <td class="px-4 py-3">{{ app.position }}</td>
+          <td class="px-4 py-3">
+            {{ app.position }}
+            <a
+              v-if="app.github_project_url"
+              :href="app.github_project_url"
+              target="_blank"
+              rel="noopener"
+              class="block text-xs text-zinc-500 hover:underline dark:text-zinc-400"
+            >
+              Projet GitHub ↗
+            </a>
+          </td>
+          <td class="px-4 py-3">
+            <select
+              :value="app.type ?? 'emploi'"
+              class="rounded-lg border border-zinc-300 bg-white px-2 py-1 dark:border-zinc-700 dark:bg-zinc-800"
+              @change="emit('update-type', app.id, ($event.target as HTMLSelectElement).value as ApplicationType)"
+            >
+              <option v-for="type in APPLICATION_TYPES" :key="type" :value="type">
+                {{ APPLICATION_TYPE_LABELS[type] }}
+              </option>
+            </select>
+          </td>
           <td class="px-4 py-3 whitespace-nowrap">{{ formatDate(app.applied_at) }}</td>
           <td class="px-4 py-3">
             <select

@@ -1,16 +1,21 @@
 import { serverSupabaseClient, serverSupabaseUser } from "#supabase/server";
 import type { Application, ApplicationInput } from "#shared/types/application";
-import { APPLICATION_STATUSES } from "#shared/types/application";
+import {
+  APPLICATION_STATUSES,
+  APPLICATION_TYPES,
+} from "#shared/types/application";
 
 const UPDATABLE_FIELDS = [
   "company",
   "position",
   "status",
+  "type",
   "applied_at",
   "follow_up_at",
   "contact_name",
   "contact_email",
   "job_url",
+  "github_project_url",
   "notes",
 ] as const;
 
@@ -35,6 +40,9 @@ export default defineEventHandler(async (event): Promise<Application> => {
     !APPLICATION_STATUSES.includes(update.status as never)
   ) {
     throw createError({ statusCode: 400, statusMessage: "Statut invalide" });
+  }
+  if (update.type && !APPLICATION_TYPES.includes(update.type as never)) {
+    throw createError({ statusCode: 400, statusMessage: "Type invalide" });
   }
 
   const client = await serverSupabaseClient(event);
